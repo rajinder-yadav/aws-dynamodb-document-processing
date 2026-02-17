@@ -41,7 +41,7 @@ async function main() {
 		console.log(`  ✓ Created record ${i + 1}: ${record.RunTime}`);
 	}
 
-	console.log("\n✓ 12 records have been created");
+	console.log(`\n✓ ${recordCount} records have been created`);
 	await waitForEnter("Press Enter to continue...");
 
 	console.log("\n3. Processing records...");
