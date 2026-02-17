@@ -1,0 +1,61 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/debian
+{
+	"name": "Debian",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	"image": "mcr.microsoft.com/devcontainers/base:bullseye",
+	"mounts": [
+		"source=/home/yadav/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
+		"source=/home/yadav/.cdk,target=/home/vscode/.cdk,type=bind,consistency=cached",
+		"source=/home/yadav/.qwen,target=/home/vscode/.qwen,type=bind,consistency=cached",
+		"source=/home/yadav/.gemini,target=/home/vscode/.gemini,type=bind,consistency=cached",
+		"source=/home/yadav/.kilocode,target=/home/vscode/.kilocode,type=bind,consistency=cached",
+		"source=/home/yadav/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached",
+		"source=/opt/local/apps,target=/opt/local/apps,type=bind,consistency=cached",
+		"source=/mnt/Home/yadav/dev/devcontainers-setup,target=/home/vscode/devcontainers-setup,type=bind,consistency=cached",
+		"source=/mnt/WD1TB/dynamodb/,target=/home/vscode/data,type=bind,consistency=cached",
+		"source=/home/yadav/.local/share/pnpm,target=/home/vscode/.local/share/pnpm,type=bind,consistency=cached",
+		"source=/home/yadav/.local/share/kilo,target=/home/vscode/.local/share/kilo,type=bind,consistency=cached",
+		"source=/home/yadav/.local/state/,target=/home/vscode/.local/state,type=bind,consistency=cached"
+	],
+	"forwardPorts": [8000, 8001],
+	"postStartCommand": "",
+	"features": {
+		"ghcr.io/devcontainers/features/node:1": {},
+		"ghcr.io/devcontainers/features/aws-cli:1": {},
+		"ghcr.io/devcontainers-extra/features/aws-cdk:2": {},
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+		"ghcr.io/devcontainers/features/java:1": {}
+	},
+	"customizations": {
+		"vscode": {
+			"settings": {},
+			"extensions": [
+				"alefragnani.Bookmarks",
+				"christian-kohler.path-intellisense",
+				"dbaeumer.vscode-eslint",
+				"dracula-theme.theme-dracula",
+				"EditorConfig.EditorConfig",
+				"google.gemini-cli-vscode-ide-companion",
+				"humao.rest-client",
+				"jebbs.plantuml",
+				"johnpapa.vscode-peacock",
+				"kilocode.kilo-code",
+				"MermaidChart.vscode-mermaid-chart",
+				"ms-vscode.js-debug-nightly",
+				"ms-vscode.vscode-typescript-next",
+				"redhat.vscode-yaml",
+				"shd101wyy.markdown-preview-enhanced",
+				"tranhl.find-then-jump"
+			]
+		}
+	}
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+	// Configure tool-specific properties.
+	// "customizations": {},
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "root"
+}

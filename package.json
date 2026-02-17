@@ -1,0 +1,42 @@
+{
+	"name": "tsys-record-processing",
+	"version": "1.0.0",
+	"description": "TypeScript project for DynamoDB local development",
+	"main": "dist/index.js",
+	"type": "module",
+	"scripts": {
+		"prebuild": "rm -rf ./dist",
+		"build": "tsc",
+		"dev": "tsx watch src/index.ts",
+		"record-example": "tsx src/record-example.ts",
+		"processor-example": "tsx src/processor-example.ts",
+		"processor-complete-example": "tsx src/processor-complete-example.ts",
+		"typecheck": "tsc --noEmit",
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"create-tables": "tsx scripts/create-tables.ts",
+		"format:lint": "pnpm exec biome check --write",
+		"format": "biome format --write",
+		"lint": "biome lint --write",
+		"tsc": "tsc"
+	},
+	"keywords": [
+		"dynamodb",
+		"typescript",
+		"aws"
+	],
+	"author": "",
+	"license": "ISC",
+	"packageManager": "pnpm@10.29.3",
+	"dependencies": {
+		"@aws-sdk/client-dynamodb": "^3.991.0",
+		"@aws-sdk/lib-dynamodb": "^3.991.0",
+		"dotenv": "^17.3.1"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.4.2",
+		"@types/node": "^25.2.3",
+		"tsx": "^4.21.0",
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.18"
+	}
+}
