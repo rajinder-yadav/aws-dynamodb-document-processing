@@ -80,7 +80,12 @@ export class RecordProcessor {
 		record: Record,
 		processFn: ProcessFunction,
 	): Promise<void> {
-		await processFn(record);
+		await exponentialBackoff(
+			() => processFn(record),
+			this.config.maxRetries,
+			this.config.backoffBaseMs,
+			this.config.backoffMultiplier,
+		);
 		await this.markAsProcessed(record);
 	}
 
