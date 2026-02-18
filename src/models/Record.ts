@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   DeleteCommand,
   type DocClient,
@@ -10,17 +9,6 @@ import {
 } from "../services/dynamodb.js";
 import type { RecordData, RecordRepository as IRecordRepository } from "../types/index.js";
 
-export const RecordSchema = z.object({
-  AccountId: z.string().min(1),
-  RunTime: z.string().min(1),
-  Processed: z.union([z.literal(0), z.literal(1)]),
-  DocumentId: z.string().min(1),
-});
-
-export const RecordWithExtrasSchema = RecordSchema.loose();
-
-export type Record = z.infer<typeof RecordWithExtrasSchema>;
-
 export class DynamoDBRecordRepository implements IRecordRepository {
   private readonly tableName: string;
   private readonly docClient: DocClient;
@@ -31,11 +19,16 @@ export class DynamoDBRecordRepository implements IRecordRepository {
   }
 
   async putItem(record: RecordData): Promise<void> {
-    const validated = RecordWithExtrasSchema.parse(record);
+    const now = new Date().toISOString();
+    const recordWithTimestamps = {
+      ...record,
+      CreatedAt: record.CreatedAt ?? now,
+      UpdatedAt: now,
+    };
     await this.docClient.send(
       new PutCommand({
         TableName: this.tableName,
-        Item: validated,
+        Item: recordWithTimestamps,
       }),
     );
   }
@@ -52,7 +45,7 @@ export class DynamoDBRecordRepository implements IRecordRepository {
       return undefined;
     }
 
-    return RecordWithExtrasSchema.parse(result.Item) as RecordData;
+    return result.Item as RecordData;
   }
 
   async queryByAccount(accountId: string): Promise<RecordData[]> {
@@ -106,16 +99,19 @@ export class DynamoDBRecordRepository implements IRecordRepository {
   }
 
   async markAsProcessed(accountId: string, runTime: string): Promise<void> {
+    const now = new Date().toISOString();
     await this.docClient.send(
       new UpdateCommand({
         TableName: this.tableName,
         Key: { AccountId: accountId, RunTime: runTime },
-        UpdateExpression: "SET #Processed = :Processed",
+        UpdateExpression: "SET #Processed = :Processed, #UpdatedAt = :UpdatedAt",
         ExpressionAttributeNames: {
           "#Processed": "Processed",
+          "#UpdatedAt": "UpdatedAt",
         },
         ExpressionAttributeValues: {
           ":Processed": 1,
+          ":UpdatedAt": now,
         },
       }),
     );
@@ -135,7 +131,7 @@ export class DynamoDBRecordRepository implements IRecordRepository {
       return [];
     }
 
-    return items.map((item) => RecordWithExtrasSchema.parse(item) as RecordData);
+    return items as RecordData[];
   }
 }
 

@@ -1,5 +1,5 @@
 import "dotenv/config";
-import type { Record } from "./models/Record.js";
+import type { RecordData } from "./models/Record.js";
 import { RecordRepository } from "./models/Record.js";
 import { RecordProcessor } from "./services/RecordProcessor.js";
 import { createInterface } from "node:readline/promises";
@@ -25,7 +25,7 @@ async function main() {
     },
   });
 
-  const testRecords: Record[] = [];
+  const testRecords: RecordData[] = [];
   const recordCount = 150;
 
   console.log(`1. Creating ${recordCount} test records...`);
@@ -49,7 +49,7 @@ async function main() {
 
   console.log("\n3. Processing records...");
 
-  async function processRecord(record: Record) {
+  async function processRecord(record: RecordData) {
     console.log(`  Processing: AccountId=${record.AccountId}, RunTime=${record.RunTime}`);
 
     if (Math.random() < 0.2) {

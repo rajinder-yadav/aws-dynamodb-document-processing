@@ -19,6 +19,8 @@ export interface RecordData {
   RunTime: string;
   Processed: 0 | 1;
   DocumentId: string;
+  CreatedAt?: string;
+  UpdatedAt?: string;
   [key: string]: unknown;
 }
 

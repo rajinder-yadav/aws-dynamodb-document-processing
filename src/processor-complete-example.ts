@@ -1,5 +1,6 @@
 import "dotenv/config";
-import { type Record, RecordRepository } from "./models/Record.js";
+import type { RecordData } from "./models/Record.js";
+import { RecordRepository } from "./models/Record.js";
 import { RecordProcessor } from "./services/RecordProcessor.js";
 
 async function main() {
@@ -8,7 +9,7 @@ async function main() {
 
   const recordModel = new RecordRepository();
 
-  const testRecords: Record[] = [];
+  const testRecords: RecordData[] = [];
 
   console.log("1. Creating test records...");
   for (let i = 0; i < 50; i++) {
@@ -33,7 +34,7 @@ async function main() {
     },
   });
 
-  async function processRecord(record: Record): Promise<void> {
+  async function processRecord(record: RecordData): Promise<void> {
     console.log(
       `  Processing: AccountId=${record.AccountId}, RunTime=${record.RunTime}, DocumentId=${record.DocumentId}`,
     );
