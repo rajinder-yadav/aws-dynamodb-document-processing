@@ -71,4 +71,4 @@ async function main() {
 	console.log("\n✅ Example completed!");
 }
 
-main();
+void main();
