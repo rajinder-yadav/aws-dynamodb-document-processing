@@ -3,6 +3,7 @@ export interface ProcessorConfig {
 	maxRetries: number;
 	backoffBaseMs: number;
 	backoffMultiplier: number;
+	maxIterations?: number;
 }
 
 export interface ProcessError {
