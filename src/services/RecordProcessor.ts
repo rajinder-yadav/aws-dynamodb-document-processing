@@ -1,38 +1,45 @@
-import { type Record, RecordRepository } from "../models/Record.js";
-import type { ProcessError, ProcessorConfig } from "../utils/processor-config.js";
+import type { RecordData } from "../models/Record.js";
+import { RecordRepository } from "../models/Record.js";
+import type { Logger, ProcessError, ProcessorMetrics, RecordRepository as IRecordRepository } from "../types/index.js";
+import type { ProcessorConfig } from "../utils/processor-config.js";
 import { getDefaultConfig } from "../utils/processor-config.js";
+import { createLogger } from "./Logger.js";
 
-export type ProcessFunction = (record: Record) => Promise<void>;
+export type ProcessFunction = (record: RecordData) => Promise<void>;
 
 export class RecordProcessor {
-  private recordRepository: RecordRepository;
+  private recordRepository: IRecordRepository;
   private config: ProcessorConfig;
   private errors: ProcessError[];
   private totalProcessed: number;
   private totalAttempts: number;
   private maxIterations: number;
+  private logger: Logger;
 
-  constructor(config?: Partial<ProcessorConfig>) {
-    this.recordRepository = new RecordRepository();
-    this.config = { ...getDefaultConfig(), ...config };
+  constructor(options?: {
+    config?: Partial<ProcessorConfig>;
+    recordRepository?: IRecordRepository;
+    logger?: Logger;
+  }) {
+    this.recordRepository = options?.recordRepository ?? new RecordRepository();
+    this.config = { ...getDefaultConfig(), ...options?.config };
     this.errors = [];
     this.totalProcessed = 0;
     this.totalAttempts = 0;
-    this.maxIterations = config?.maxIterations ?? 10;
+    this.maxIterations = options?.config?.maxIterations ?? 10;
+    this.logger = options?.logger ?? createLogger("RecordProcessor");
   }
 
   async processAll(processFn: ProcessFunction): Promise<ProcessError[]> {
     this.errors = [];
     this.totalProcessed = 0;
     this.totalAttempts = 0;
-    let recordsToRetry: Record[] = [];
+    let recordsToRetry: RecordData[] = [];
     let iteration = 0;
 
     while (true) {
       if (iteration >= this.maxIterations) {
-        console.warn(
-          `Max iterations (${this.maxIterations}) reached. Aborting to prevent infinite loop.`,
-        );
+        this.logger.warn(`Max iterations (${this.maxIterations}) reached. Aborting to prevent infinite loop.`);
         break;
       }
 
@@ -50,7 +57,7 @@ export class RecordProcessor {
     return this.errors;
   }
 
-  private async fetchUnprocessedRecords(): Promise<Record[]> {
+  private async fetchUnprocessedRecords(): Promise<RecordData[]> {
     return await this.exponentialBackoffWithJitter(
       () => this.recordRepository.queryUnprocessed(),
       this.config.maxRetries,
@@ -59,9 +66,9 @@ export class RecordProcessor {
     );
   }
 
-  private async processBatch(records: Record[], processFn: ProcessFunction): Promise<Record[]> {
+  private async processBatch(records: RecordData[], processFn: ProcessFunction): Promise<RecordData[]> {
     const chunks = this.chunkRecords(records, this.config.maxWorkers);
-    const failedRecords: Record[] = [];
+    const failedRecords: RecordData[] = [];
 
     for (const chunk of chunks) {
       const results = await Promise.allSettled(
@@ -74,7 +81,7 @@ export class RecordProcessor {
           this.errors.push({
             AccountId: record.AccountId,
             RunTime: record.RunTime,
-            error: String(result.reason),
+            error: this.extractErrorMessage(result.reason),
           });
           failedRecords.push(record);
         }
@@ -84,11 +91,12 @@ export class RecordProcessor {
     return failedRecords;
   }
 
-  private async processRecord(record: Record, processFn: ProcessFunction): Promise<void> {
-    this.totalProcessed++;
-    this.totalAttempts++;
+  private async processRecord(record: RecordData, processFn: ProcessFunction): Promise<void> {
     await this.exponentialBackoffWithJitter(
-      () => processFn(record),
+      async () => {
+        await processFn(record);
+        this.totalProcessed++;
+      },
       this.config.maxRetries,
       this.config.backoffBaseMs,
       this.config.backoffMultiplier,
@@ -96,7 +104,7 @@ export class RecordProcessor {
     await this.markAsProcessed(record);
   }
 
-  private async markAsProcessed(record: Record): Promise<void> {
+  private async markAsProcessed(record: RecordData): Promise<void> {
     await this.exponentialBackoffWithJitter(
       () => this.recordRepository.markAsProcessed(record.AccountId, record.RunTime),
       this.config.maxRetries,
@@ -105,8 +113,8 @@ export class RecordProcessor {
     );
   }
 
-  private chunkRecords(records: Record[], chunkSize: number): Record[][] {
-    const chunks: Record[][] = [];
+  private chunkRecords(records: RecordData[], chunkSize: number): RecordData[][] {
+    const chunks: RecordData[][] = [];
     for (let i = 0; i < records.length; i += chunkSize) {
       chunks.push(records.slice(i, i + chunkSize));
     }
@@ -117,12 +125,11 @@ export class RecordProcessor {
     return this.errors;
   }
 
-  getMetrics() {
+  getMetrics(): ProcessorMetrics {
     return {
       totalProcessed: this.totalProcessed,
       totalAttempts: this.totalAttempts,
       unprocessedErrors: this.errors.length,
-      totalErrorsHandled: this.totalAttempts - this.totalProcessed,
       successRate:
         this.totalProcessed > 0
           ? ((this.totalProcessed - this.errors.length) / this.totalProcessed) * 100
@@ -152,8 +159,15 @@ export class RecordProcessor {
     return !nonRetryablePatterns.some((pattern) => errorMessage.includes(pattern));
   }
 
-  async sleep(ms: number): Promise<void> {
+  private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private extractErrorMessage(reason: unknown): string {
+    if (reason instanceof Error) {
+      return reason.message;
+    }
+    return String(reason);
   }
 
   async exponentialBackoffWithJitter<T>(
@@ -168,8 +182,9 @@ export class RecordProcessor {
       try {
         return await task();
       } catch (error) {
-        ++this.totalAttempts;
-        console.log(`✗ Processing failed:  Error: ${(error as Error).message}`);
+        this.totalAttempts++;
+        const errorMessage = this.extractErrorMessage(error);
+        this.logger.debug(`Processing failed: ${errorMessage}`);
 
         lastError = error;
 

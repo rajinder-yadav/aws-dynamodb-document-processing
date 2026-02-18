@@ -7,19 +7,31 @@ import {
   QueryCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { getDynamoDBConfig } from "../utils/config.js";
+import {
+  createDynamoDBClientConfig,
+  getDynamoDBConfig,
+} from "../utils/config.js";
 
-const config = getDynamoDBConfig();
+export type DocClient = DynamoDBDocumentClient;
 
-const client = new DynamoDBClient({
-  endpoint: config.endpoint,
-  // region: config.region,
-  // credentials: {
-  //   accessKeyId: config.accessKeyId,
-  //   secretAccessKey: config.secretAccessKey,
-  // },
-});
+export function createDocClient(config?: {
+  endpoint?: string;
+  region?: string;
+  accessKeyId?: string;
+  secretAccessKey?: string;
+}): DocClient {
+  const dbConfig = getDynamoDBConfig();
+  const clientConfig = createDynamoDBClientConfig({
+    endpoint: config?.endpoint ?? dbConfig.endpoint,
+    region: config?.region ?? dbConfig.region,
+    accessKeyId: config?.accessKeyId ?? dbConfig.accessKeyId,
+    secretAccessKey: config?.secretAccessKey ?? dbConfig.secretAccessKey,
+  });
 
-export const docClient = DynamoDBDocumentClient.from(client);
+  const client = new DynamoDBClient(clientConfig);
+  return DynamoDBDocumentClient.from(client);
+}
 
-export { PutCommand, GetCommand, QueryCommand, UpdateCommand, DeleteCommand };
+export const docClient = createDocClient();
+
+export { DeleteCommand, GetCommand, PutCommand, QueryCommand, UpdateCommand };

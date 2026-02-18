@@ -19,8 +19,10 @@ async function main() {
 
   const recordModel = new RecordRepository();
   const processor = new RecordProcessor({
-    maxWorkers: 3,
-    maxRetries: 3,
+    config: {
+      maxWorkers: 3,
+      maxRetries: 3,
+    },
   });
 
   const testRecords: Record[] = [];
@@ -66,7 +68,6 @@ async function main() {
   console.log(`     Processed Records: ${metrics.totalProcessed}`);
   console.log(`     Unprocessed Errors: ${metrics.unprocessedErrors}`);
   console.log(`     Attempts: ${metrics.totalAttempts}`);
-  console.log(`     Errors Handled: ${metrics.totalErrorsHandled}`);
   console.log(`     Success Rate: ${metrics.successRate}%`);
 
   if (errors.length > 0) {
@@ -80,11 +81,11 @@ async function main() {
 
   await waitForEnter("\nPress Enter to continue...");
 
-  console.log("\n5. Deleting all records...");
+  console.log("\n5. Deleting all records in parallel...");
 
-  for (const record of testRecords) {
-    await recordModel.deleteItem(record.AccountId, record.RunTime);
-  }
+  await Promise.all(
+    testRecords.map((record) => recordModel.deleteItem(record.AccountId, record.RunTime)),
+  );
   console.log("✓ All records have been deleted");
 
   console.log("\n✅ Example completed!");

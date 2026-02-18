@@ -1,63 +1,76 @@
+import { z } from "zod";
 import {
   DeleteCommand,
-  docClient,
+  type DocClient,
   GetCommand,
   PutCommand,
   QueryCommand,
   UpdateCommand,
+  createDocClient,
 } from "../services/dynamodb.js";
+import type { RecordData, RecordRepository as IRecordRepository } from "../types/index.js";
 
-export interface Record {
-  AccountId: string;
-  RunTime: string;
-  Processed: 0 | 1;
-  DocumentId: string;
-  [key: string]: unknown;
-}
+export const RecordSchema = z.object({
+  AccountId: z.string().min(1),
+  RunTime: z.string().min(1),
+  Processed: z.union([z.literal(0), z.literal(1)]),
+  DocumentId: z.string().min(1),
+});
 
-export class RecordRepository {
-  private tableName: string;
+export const RecordWithExtrasSchema = RecordSchema.loose();
 
-  constructor(tableName: string = process.env.RECORD_TABLE ?? "TSYSAdd") {
-    this.tableName = tableName;
+export type Record = z.infer<typeof RecordWithExtrasSchema>;
+
+export class DynamoRecordRepository implements IRecordRepository {
+  private readonly tableName: string;
+  private readonly docClient: DocClient;
+
+  constructor(options?: { tableName?: string; docClient?: DocClient }) {
+    this.tableName = options?.tableName ?? process.env.RECORD_TABLE ?? "TSYSAdd";
+    this.docClient = options?.docClient ?? createDocClient();
   }
 
-  async putItem(record: Record): Promise<void> {
-    await docClient.send(
+  async putItem(record: RecordData): Promise<void> {
+    const validated = RecordWithExtrasSchema.parse(record);
+    await this.docClient.send(
       new PutCommand({
         TableName: this.tableName,
-        Item: record,
+        Item: validated,
       }),
     );
   }
 
-  async getItem(AccountId: string, RunTime: string): Promise<Record | undefined> {
-    const result = await docClient.send(
+  async getItem(accountId: string, runTime: string): Promise<RecordData | undefined> {
+    const result = await this.docClient.send(
       new GetCommand({
         TableName: this.tableName,
-        Key: { AccountId, RunTime },
+        Key: { AccountId: accountId, RunTime: runTime },
       }),
     );
 
-    return result.Item as Record;
+    if (!result.Item) {
+      return undefined;
+    }
+
+    return RecordWithExtrasSchema.parse(result.Item) as RecordData;
   }
 
-  async queryByAccount(AccountId: string): Promise<Record[]> {
-    const result = await docClient.send(
+  async queryByAccount(accountId: string): Promise<RecordData[]> {
+    const result = await this.docClient.send(
       new QueryCommand({
         TableName: this.tableName,
         KeyConditionExpression: "AccountId = :AccountId",
         ExpressionAttributeValues: {
-          ":AccountId": AccountId,
+          ":AccountId": accountId,
         },
       }),
     );
 
-    return (result.Items || []) as Record[];
+    return this.parseItems(result.Items);
   }
 
-  async queryUnprocessed(): Promise<Record[]> {
-    const result = await docClient.send(
+  async queryUnprocessed(): Promise<RecordData[]> {
+    const result = await this.docClient.send(
       new QueryCommand({
         TableName: this.tableName,
         IndexName: "Processed",
@@ -71,11 +84,11 @@ export class RecordRepository {
       }),
     );
 
-    return (result.Items || []) as Record[];
+    return this.parseItems(result.Items);
   }
 
-  async queryProcessed(): Promise<Record[]> {
-    const result = await docClient.send(
+  async queryProcessed(): Promise<RecordData[]> {
+    const result = await this.docClient.send(
       new QueryCommand({
         TableName: this.tableName,
         IndexName: "Processed",
@@ -89,14 +102,14 @@ export class RecordRepository {
       }),
     );
 
-    return (result.Items || []) as Record[];
+    return this.parseItems(result.Items);
   }
 
-  async markAsProcessed(AccountId: string, RunTime: string): Promise<void> {
-    await docClient.send(
+  async markAsProcessed(accountId: string, runTime: string): Promise<void> {
+    await this.docClient.send(
       new UpdateCommand({
         TableName: this.tableName,
-        Key: { AccountId, RunTime },
+        Key: { AccountId: accountId, RunTime: runTime },
         UpdateExpression: "SET #Processed = :Processed",
         ExpressionAttributeNames: {
           "#Processed": "Processed",
@@ -108,12 +121,23 @@ export class RecordRepository {
     );
   }
 
-  async deleteItem(AccountId: string, RunTime: string): Promise<void> {
-    await docClient.send(
+  async deleteItem(accountId: string, runTime: string): Promise<void> {
+    await this.docClient.send(
       new DeleteCommand({
         TableName: this.tableName,
-        Key: { AccountId, RunTime },
+        Key: { AccountId: accountId, RunTime: runTime },
       }),
     );
   }
+
+  private parseItems(items: unknown): RecordData[] {
+    if (items === null || items === undefined || !Array.isArray(items)) {
+      return [];
+    }
+
+    return items.map((item) => RecordWithExtrasSchema.parse(item) as RecordData);
+  }
 }
+
+export const RecordRepository = DynamoRecordRepository;
+export { type RecordData };

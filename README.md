@@ -40,10 +40,10 @@ Edit `.env` if you need to customize settings (default values work for local Dyn
 pnpm create-tables
 ```
 
-This creates two tables:
-
-- **Users**: With pk/sk primary keys
-- **Records**: With AccountId/RunTime primary keys and a "Processed" GSI for tracking document processing status
+This creates the TSYSAdd table with:
+- **Partition Key**: AccountId
+- **Sort Key**: RunTime
+- **Global Secondary Index (GSI)**: Processed for tracking document processing status
 
 ## Usage
 
@@ -74,12 +74,24 @@ pnpm build
 ### Type check
 
 ```bash
-pnpm check
+pnpm tsc
+```
+
+### Run tests
+
+```bash
+pnpm test
+```
+
+### Run tests with coverage
+
+```bash
+pnpm test:coverage
 ```
 
 ## Record Model
 
-The `RecordModel` handles a table with:
+The `DynamoRecordRepository` handles a table with:
 
 - **Partition Key**: AccountId
 - **Sort Key**: RunTime
@@ -89,12 +101,12 @@ The `RecordModel` handles a table with:
 ### Example usage
 
 ```typescript
-import { RecordModel } from "./models/Record.js";
+import { DynamoRecordRepository } from "./models/Record.js";
 
-const recordModel = new RecordModel();
+const recordRepository = new DynamoRecordRepository();
 
 // Insert unprocessed record
-await recordModel.putItem({
+await recordRepository.putItem({
   AccountId: "ACC12345",
   RunTime: "2026-02-17T12:00:00Z",
   Processed: 0,
@@ -102,16 +114,16 @@ await recordModel.putItem({
 });
 
 // Query unprocessed records via GSI
-const unprocessed = await recordModel.queryUnprocessed();
+const unprocessed = await recordRepository.queryUnprocessed();
 
 // Mark as processed
-await recordModel.markAsProcessed("ACC12345", "2026-02-17T12:00:00Z");
+await recordRepository.markAsProcessed("ACC12345", "2026-02-17T12:00:00Z");
 
 // Query processed records via GSI
-const processed = await recordModel.queryProcessed();
+const processed = await recordRepository.queryProcessed();
 
 // Query by account
-const accountRecords = await recordModel.queryByAccount("ACC12345");
+const accountRecords = await recordRepository.queryByAccount("ACC12345");
 ```
 
 ## RecordProcessor
@@ -125,21 +137,28 @@ The `RecordProcessor` processes all unprocessed records in parallel with configu
 - **Exponential Back-off**: Automatic retries for DynamoDB errors
 - **Configurable Settings**: Adjust workers, retries, and back-off timing
 - **Error Tracking**: Collects all errors for later processing
+- **Dependency Injection**: Fully testable with injected dependencies
 
 ### Example usage
 
 ```typescript
 import { RecordProcessor } from "./services/RecordProcessor.js";
-import type { Record } from "./models/Record.js";
+import { DynamoRecordRepository } from "./models/Record.js";
+import { createLogger } from "./services/Logger.js";
+import type { RecordData } from "./types/index.js";
 
 const processor = new RecordProcessor({
-  maxWorkers: 5,
-  maxRetries: 3,
-  backoffBaseMs: 100,
-  backoffMultiplier: 2,
+  recordRepository: new DynamoRecordRepository(),
+  logger: createLogger("RecordProcessor"),
+  config: {
+    maxWorkers: 5,
+    maxRetries: 3,
+    backoffBaseMs: 100,
+    backoffMultiplier: 2,
+  },
 });
 
-async function processRecord(record: Record): Promise<void> {
+async function processRecord(record: RecordData): Promise<void> {
   console.log(`Processing: ${record.AccountId} - ${record.RunTime}`);
 }
 
@@ -157,31 +176,41 @@ errors.forEach((error) => {
 - `maxRetries`: Maximum retry attempts for DynamoDB errors (default: 3)
 - `backoffBaseMs`: Base delay for exponential back-off in ms (default: 100)
 - `backoffMultiplier`: Multiplier for exponential back-off (default: 2)
+- `maxIterations`: Maximum processing iterations to prevent infinite loops (default: 10)
 
 ## Project Structure
 
 ```
 src/
-├── services/               # DynamoDB client and services
+├── services/               # Services
 │   ├── dynamodb.ts        # DynamoDB client setup
+│   ├── Logger.ts          # Logging service
 │   └── RecordProcessor.ts # Parallel record processor
 ├── models/                 # Data models
-│   ├── User.ts           # User model
-│   └── Record.ts         # Record model
+│   └── Record.ts          # Record model with Zod validation
+├── types/                  # Type definitions
+│   └── index.ts           # Interfaces and types
 ├── utils/                  # Utility functions
-│   ├── config.ts         # Configuration utilities
-│   ├── processor-config.ts # Processor configuration
-│   └── retry.ts         # Exponential back-off utilities
-├── index.ts                # User model example
+│   ├── config.ts          # Configuration utilities
+│   └── processor-config.ts # Processor configuration
+├── index.ts                # Main entry point / exports
 ├── record-example.ts       # Record model example
-├── processor-example.ts   # Processor example
+├── processor-example.ts    # Processor example
 └── processor-complete-example.ts  # Complete processor example with test data
-scripts/                   # Utility scripts (create-tables)
+scripts/                    # Utility scripts
+└── create-tables.ts        # Create DynamoDB tables
 ```
 
 ## Technology Stack
 
-- TypeScript
+- TypeScript (strict mode)
 - AWS SDK v3 (@aws-sdk/client-dynamodb, @aws-sdk/lib-dynamodb)
+- Zod (schema validation)
 - Vitest (testing)
 - tsx (development runner)
+- oxlint (linting)
+- oxfmt (formatting)
+
+## Architecture
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed system design and diagrams.

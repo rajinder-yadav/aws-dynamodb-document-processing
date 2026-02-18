@@ -27,8 +27,10 @@ async function main() {
 
   console.log("\n2. Processing records with 3 workers...");
   const processor = new RecordProcessor({
-    maxWorkers: 3,
-    maxRetries: 3,
+    config: {
+      maxWorkers: 3,
+      maxRetries: 3,
+    },
   });
 
   async function processRecord(record: Record): Promise<void> {
@@ -62,10 +64,10 @@ async function main() {
   const remaining = await recordModel.queryUnprocessed();
   console.log(`   Remaining unprocessed: ${remaining.length}`);
 
-  console.log("\n6. Cleaning up test records...");
-  for (const record of testRecords) {
-    await recordModel.deleteItem(record.AccountId, record.RunTime);
-  }
+  console.log("\n6. Cleaning up test records in parallel...");
+  await Promise.all(
+    testRecords.map((record) => recordModel.deleteItem(record.AccountId, record.RunTime)),
+  );
   console.log("   ✓ Cleanup complete");
 
   console.log("\n✅ Example completed!");
