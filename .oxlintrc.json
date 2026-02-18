@@ -3,9 +3,7 @@
   "categories": {
     "correctness": "warn"
   },
-  "plugins": [
-    "typescript"
-  ],
+  "plugins": ["typescript"],
   "rules": {
     "no-unused-vars": "off",
     "@typescript-eslint/no-unused-vars": "error",
@@ -76,10 +74,5 @@
     "builtin": true
   },
   "globals": {},
-  "ignorePatterns": [
-    "dist/**",
-    "coverage/**",
-    "node_modules/**",
-    ".pnpm-store/**"
-  ],
+  "ignorePatterns": ["dist/**", "coverage/**", "node_modules/**", ".pnpm-store/**"]
 }
