@@ -11,13 +11,14 @@ export interface Record {
 	AccountId: string;
 	RunTime: string;
 	Processed: 0 | 1;
+	DocumentId: string;
 	[key: string]: unknown;
 }
 
 export class RecordRepository {
 	private tableName: string;
 
-	constructor(tableName: string = process.env.RECORD_TABLE || "TSYSAdd") {
+	constructor(tableName: string = process.env.RECORD_TABLE ?? "TSYSAdd") {
 		this.tableName = tableName;
 	}
 
