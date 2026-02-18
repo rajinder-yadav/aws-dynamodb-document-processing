@@ -105,4 +105,4 @@ async function createTables() {
 	console.log("\nTable creation complete");
 }
 
-createTables();
+void createTables();
