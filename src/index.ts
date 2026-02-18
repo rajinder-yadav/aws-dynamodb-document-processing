@@ -1,4 +1,4 @@
-export { DynamoRecordRepository, RecordRepository, RecordSchema, RecordWithExtrasSchema, type Record } from "./models/Record.js";
+export { DynamoDBRecordRepository as DynamoRecordRepository, RecordRepository, RecordSchema, RecordWithExtrasSchema, type Record } from "./models/Record.js";
 export { RecordProcessor, type ProcessFunction } from "./services/RecordProcessor.js";
 export { ConsoleLogger, createLogger } from "./services/Logger.js";
 export { createDocClient, docClient } from "./services/dynamodb.js";

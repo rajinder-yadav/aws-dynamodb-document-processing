@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { DynamoRecordRepository, RecordSchema, RecordWithExtrasSchema } from "../Record.js";
+import { DynamoDBRecordRepository, RecordSchema, RecordWithExtrasSchema } from "../Record.js";
 import type { DocClient } from "../../services/dynamodb.js";
 import type { RecordData } from "../../types/index.js";
 
@@ -51,11 +51,11 @@ describe("RecordWithExtrasSchema", () => {
 
 describe("DynamoRecordRepository", () => {
   let mockDocClient: { send: ReturnType<typeof vi.fn> };
-  let repository: DynamoRecordRepository;
+  let repository: DynamoDBRecordRepository;
 
   beforeEach(() => {
     mockDocClient = { send: vi.fn() };
-    repository = new DynamoRecordRepository({
+    repository = new DynamoDBRecordRepository({
       tableName: "TestTable",
       docClient: mockDocClient as unknown as DocClient,
     });

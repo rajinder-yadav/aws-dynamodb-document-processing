@@ -21,7 +21,7 @@ export const RecordWithExtrasSchema = RecordSchema.loose();
 
 export type Record = z.infer<typeof RecordWithExtrasSchema>;
 
-export class DynamoRecordRepository implements IRecordRepository {
+export class DynamoDBRecordRepository implements IRecordRepository {
   private readonly tableName: string;
   private readonly docClient: DocClient;
 
@@ -139,5 +139,5 @@ export class DynamoRecordRepository implements IRecordRepository {
   }
 }
 
-export const RecordRepository = DynamoRecordRepository;
+export const RecordRepository = DynamoDBRecordRepository;
 export { type RecordData };
