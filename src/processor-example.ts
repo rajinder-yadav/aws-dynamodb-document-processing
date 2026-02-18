@@ -24,8 +24,8 @@ async function main() {
 	});
 
 	const testRecords: Record[] = [];
+	const recordCount = 150;
 
-	const recordCount = 50;
 	console.log(`1. Creating ${recordCount} test records...`);
 	for (let i = 0; i < recordCount; i++) {
 		const record = {
@@ -42,16 +42,18 @@ async function main() {
 	}
 
 	console.log(`\n✓ ${recordCount} records have been created`);
+
 	await waitForEnter("Press Enter to continue...");
 
 	console.log("\n3. Processing records...");
+
 	async function processRecord(record: Record) {
 		console.log(
 			`  Processing: AccountId=${record.AccountId}, RunTime=${record.RunTime}`,
 		);
 
 		if (Math.random() < 0.2) {
-			throw new Error("Random processing error");
+			throw new Error("Random processing error (DynamoDB timeout simulation)");
 		}
 
 		await new Promise((resolve) => setTimeout(resolve, Math.random() * 500));
@@ -60,7 +62,14 @@ async function main() {
 	const errors = await processor.processAll(processRecord);
 
 	console.log("\n✓ Records have been processed");
-	console.log(`   Errors: ${errors.length}`);
+
+	const metrics = processor.getMetrics();
+	console.log(`\n   Metrics:`);
+	console.log(`     Processed Records: ${metrics.totalProcessed}`);
+	console.log(`     Unprocessed Errors: ${metrics.unprocessedErrors}`);
+	console.log(`     Attempts: ${metrics.totalAttempts}`);
+	console.log(`     Errors Handled: ${metrics.totalErrorsHandled}`);
+	console.log(`     Success Rate: ${metrics.successRate}%`);
 
 	if (errors.length > 0) {
 		console.log("\nFailed records:");
@@ -74,12 +83,14 @@ async function main() {
 	await waitForEnter("\nPress Enter to continue...");
 
 	console.log("\n5. Deleting all records...");
+
 	for (const record of testRecords) {
 		await recordModel.deleteItem(record.AccountId, record.RunTime);
 	}
 	console.log("✓ All records have been deleted");
 
 	console.log("\n✅ Example completed!");
+
 }
 
-main();
+void main();
