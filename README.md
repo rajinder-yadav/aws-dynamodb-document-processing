@@ -2,6 +2,21 @@
 
 TypeScript project for working with DynamoDB locally using AWS SDK v3.
 
+Shows how to process unprocessed DynamoDB table documents. Uses Worker to do the processing and isolates error with exponential backoff retry.
+
+You can configure the following properties:
+
+```ts
+export interface ProcessorConfig {
+  maxWorkers: number;         \\ Default 3
+  maxRetries: number;         \\ Default 5
+  backoffBaseMs: number;      \\ Default 100
+  backoffMultiplier: number;  \\ Default 2
+  maxIterations: number;      \\ Default 10
+}
+```
+
+
 ## Setup
 
 ### 1. Install dependencies
