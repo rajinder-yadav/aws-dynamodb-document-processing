@@ -1,4 +1,4 @@
-export interface LogEntry {
+export interface ILogEntry {
   timestamp: string;
   level: LogLevel;
   message: string;
@@ -7,14 +7,14 @@ export interface LogEntry {
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
-export interface Logger {
+export interface ILogger {
   debug(message: string, context?: Record<string, unknown>): void;
   info(message: string, context?: Record<string, unknown>): void;
   warn(message: string, context?: Record<string, unknown>): void;
   error(message: string, context?: Record<string, unknown>): void;
 }
 
-export interface RecordData {
+export interface IRecordData {
   AccountId: string;
   RunTime: string;
   Processed: 0 | 1;
@@ -37,12 +37,12 @@ export interface ProcessorMetrics {
   successRate: number;
 }
 
-export interface RecordRepository {
-  putItem(record: RecordData): Promise<void>;
-  getItem(accountId: string, runTime: string): Promise<RecordData | undefined>;
-  queryByAccount(accountId: string): Promise<RecordData[]>;
-  queryUnprocessed(): Promise<RecordData[]>;
-  queryProcessed(): Promise<RecordData[]>;
+export interface IRecordRepository {
+  putItem(record: IRecordData): Promise<void>;
+  getItem(accountId: string, runTime: string): Promise<IRecordData | undefined>;
+  queryByAccount(accountId: string): Promise<IRecordData[]>;
+  queryUnprocessed(): Promise<IRecordData[]>;
+  queryProcessed(): Promise<IRecordData[]>;
   markAsProcessed(accountId: string, runTime: string): Promise<void>;
   deleteItem(accountId: string, runTime: string): Promise<void>;
 }

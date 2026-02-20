@@ -3,7 +3,7 @@ export interface ProcessorConfig {
   maxRetries: number;
   backoffBaseMs: number;
   backoffMultiplier: number;
-  maxIterations?: number;
+  maxIterations: number;
 }
 
 export interface ProcessError {
@@ -18,5 +18,6 @@ export function getDefaultConfig(): ProcessorConfig {
     maxRetries: 3,
     backoffBaseMs: 100,
     backoffMultiplier: 2,
+    maxIterations: 10,
   };
 }

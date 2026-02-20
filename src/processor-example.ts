@@ -1,7 +1,7 @@
 import "dotenv/config";
 import type { RecordData } from "./models/Record.js";
 import { RecordRepository } from "./models/Record.js";
-import { RecordProcessor } from "./services/RecordProcessor.js";
+import { DDBRecordProcessor } from "./services/RecordProcessor.js";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { randomUUID } from "node:crypto";
@@ -18,7 +18,7 @@ async function main() {
   console.log("========================\n");
 
   const recordModel = new RecordRepository();
-  const processor = new RecordProcessor({
+  const processor = new DDBRecordProcessor({
     config: {
       maxWorkers: 3,
       maxRetries: 3,
@@ -56,7 +56,11 @@ async function main() {
       throw new Error("Random processing error (DynamoDB timeout simulation)");
     }
 
-    await new Promise((resolve) => setTimeout(resolve, Math.random() * 500));
+    await new Promise<void>((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, Math.random() * 500);
+    });
   }
 
   const errors = await processor.processAll(processRecord);

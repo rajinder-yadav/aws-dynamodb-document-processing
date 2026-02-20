@@ -1,7 +1,7 @@
 import "dotenv/config";
 import type { RecordData } from "./models/Record.js";
 import { RecordRepository } from "./models/Record.js";
-import { RecordProcessor } from "./services/RecordProcessor.js";
+import { DDBRecordProcessor } from "./services/RecordProcessor.js";
 
 async function main() {
   console.log("Record Processor Complete Example");
@@ -27,7 +27,7 @@ async function main() {
   }
 
   console.log("\n2. Processing records with 3 workers...");
-  const processor = new RecordProcessor({
+  const processor = new DDBRecordProcessor({
     config: {
       maxWorkers: 3,
       maxRetries: 3,
@@ -43,7 +43,11 @@ async function main() {
       throw new Error("Random processing error");
     }
 
-    await new Promise((resolve) => setTimeout(resolve, Math.random() * 500));
+    await new Promise<void>((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, Math.random() * 500);
+    });
   }
 
   const errors = await processor.processAll(processRecord);

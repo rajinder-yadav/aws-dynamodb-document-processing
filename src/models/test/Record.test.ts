@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { DynamoDBRecordRepository } from "../Record.js";
 import type { DocClient } from "../../services/dynamodb.js";
-import type { RecordData } from "../../types/index.js";
+import type { IRecordData } from "../../types/index.js";
 
 describe("DynamoRecordRepository", () => {
   let mockDocClient: { send: ReturnType<typeof vi.fn> };
@@ -17,7 +17,7 @@ describe("DynamoRecordRepository", () => {
 
   describe("putItem", () => {
     it("should put item to DynamoDB", async () => {
-      const record: RecordData = {
+      const record: IRecordData = {
         AccountId: "ACC123",
         RunTime: "2026-02-17T12:00:00Z",
         Processed: 0,

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { RecordProcessor } from "../RecordProcessor.js";
-import type { RecordData, RecordRepository, Logger } from "../../types/index.js";
+import { DDBRecordProcessor } from "../RecordProcessor.js";
+import type { IRecordData, IRecordRepository, ILogger } from "../../types/index.js";
 
-function createTestRecord(overrides?: Partial<RecordData>): RecordData {
+function createTestRecord(overrides?: Partial<IRecordData>): IRecordData {
   return {
     AccountId: "ACC123",
     RunTime: "2026-02-17T12:00:00Z",
@@ -13,31 +13,32 @@ function createTestRecord(overrides?: Partial<RecordData>): RecordData {
 }
 
 describe("RecordProcessor", () => {
-  let mockRepository: RecordRepository;
-  let mockMarkAsProcessed: (accountId: string, runTime: string) => Promise<void>;
-  let mockLogger: Logger;
+  let mockRepository: IRecordRepository & { queryUnprocessed: ReturnType<typeof vi.fn> };
+  let mockMarkAsProcessed: ReturnType<typeof vi.fn>;
+  let mockLogger: ILogger;
   let mockWarn: (message: string, context?: Record<string, unknown>) => void;
-  let processor: RecordProcessor;
+  let processor: DDBRecordProcessor;
 
   beforeEach(() => {
-    mockMarkAsProcessed = vi.fn<(accountId: string, runTime: string) => Promise<void>>(() => Promise.resolve());
-    mockWarn = vi.fn<(message: string, context?: Record<string, unknown>) => void>();
+    const queryUnprocessedMock = vi.fn(() => Promise.resolve([]));
+    mockMarkAsProcessed = vi.fn(() => Promise.resolve());
+    mockWarn = vi.fn(() => undefined);
     mockRepository = {
       putItem: vi.fn(() => Promise.resolve()),
       getItem: vi.fn(() => Promise.resolve(undefined)),
       queryByAccount: vi.fn(() => Promise.resolve([])),
-      queryUnprocessed: vi.fn(() => Promise.resolve([])),
+      queryUnprocessed: queryUnprocessedMock,
       queryProcessed: vi.fn(() => Promise.resolve([])),
       markAsProcessed: mockMarkAsProcessed,
       deleteItem: vi.fn(() => Promise.resolve()),
-    };
+    } as IRecordRepository & { queryUnprocessed: ReturnType<typeof vi.fn> };
     mockLogger = {
-      debug: vi.fn(),
-      info: vi.fn(),
+      debug: vi.fn(() => undefined),
+      info: vi.fn(() => undefined),
       warn: mockWarn,
-      error: vi.fn(),
+      error: vi.fn(() => undefined),
     };
-    processor = new RecordProcessor({
+    processor = new DDBRecordProcessor({
       recordRepository: mockRepository,
       logger: mockLogger,
       config: {
@@ -51,7 +52,7 @@ describe("RecordProcessor", () => {
 
   describe("constructor", () => {
     it("should create processor with default config", () => {
-      const defaultProcessor = new RecordProcessor({
+      const defaultProcessor = new DDBRecordProcessor({
         recordRepository: mockRepository,
         logger: mockLogger,
       });
@@ -59,7 +60,7 @@ describe("RecordProcessor", () => {
     });
 
     it("should create processor with custom config", () => {
-      const customProcessor = new RecordProcessor({
+      const customProcessor = new DDBRecordProcessor({
         recordRepository: mockRepository,
         logger: mockLogger,
         config: {
@@ -75,7 +76,7 @@ describe("RecordProcessor", () => {
 
   describe("processAll", () => {
     it("should return empty errors when no records to process", async () => {
-      (mockRepository.queryUnprocessed as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      mockRepository.queryUnprocessed.mockResolvedValue([]);
 
       const errors = await processor.processAll(async () => {});
 
@@ -84,10 +85,10 @@ describe("RecordProcessor", () => {
 
     it("should process records successfully", async () => {
       const records = [createTestRecord(), createTestRecord({ RunTime: "2026-02-17T13:00:00Z" })];
-      (mockRepository.queryUnprocessed as ReturnType<typeof vi.fn>)
+      mockRepository.queryUnprocessed
         .mockResolvedValueOnce(records)
         .mockResolvedValueOnce([]);
-      (mockMarkAsProcessed as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      mockMarkAsProcessed.mockResolvedValue(undefined);
 
       const processFn = vi.fn().mockResolvedValue(undefined);
       const errors = await processor.processAll(processFn);
@@ -99,12 +100,12 @@ describe("RecordProcessor", () => {
 
     it("should collect errors from failed processing", async () => {
       const records = [createTestRecord()];
-      (mockRepository.queryUnprocessed as ReturnType<typeof vi.fn>)
+      mockRepository.queryUnprocessed
         .mockResolvedValueOnce(records)
         .mockResolvedValueOnce([]);
-      (mockMarkAsProcessed as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      mockMarkAsProcessed.mockResolvedValue(undefined);
 
-      const noRetryProcessor = new RecordProcessor({
+      const noRetryProcessor = new DDBRecordProcessor({
         recordRepository: mockRepository,
         logger: mockLogger,
         config: {
@@ -125,10 +126,10 @@ describe("RecordProcessor", () => {
 
     it("should stop after max iterations", async () => {
       const records = [createTestRecord()];
-      (mockRepository.queryUnprocessed as ReturnType<typeof vi.fn>).mockResolvedValue(records);
-      (mockMarkAsProcessed as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      mockRepository.queryUnprocessed.mockResolvedValue(records);
+      mockMarkAsProcessed.mockResolvedValue(undefined);
 
-      const limitedProcessor = new RecordProcessor({
+      const limitedProcessor = new DDBRecordProcessor({
         recordRepository: mockRepository,
         logger: mockLogger,
         config: { maxWorkers: 1, maxRetries: 0, backoffBaseMs: 1, backoffMultiplier: 1, maxIterations: 2 },
@@ -153,10 +154,10 @@ describe("RecordProcessor", () => {
 
     it("should return updated metrics after processing", async () => {
       const records = [createTestRecord()];
-      (mockRepository.queryUnprocessed as ReturnType<typeof vi.fn>)
+      mockRepository.queryUnprocessed
         .mockResolvedValueOnce(records)
         .mockResolvedValueOnce([]);
-      (mockMarkAsProcessed as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      mockMarkAsProcessed.mockResolvedValue(undefined);
 
       await processor.processAll(async () => {});
       const metrics = processor.getMetrics();
@@ -193,11 +194,11 @@ describe("RecordProcessor", () => {
 
     it("should return collected errors after processing", async () => {
       const records = [createTestRecord()];
-      (mockRepository.queryUnprocessed as ReturnType<typeof vi.fn>)
+      mockRepository.queryUnprocessed
         .mockResolvedValueOnce(records)
         .mockResolvedValueOnce([]);
 
-      const noRetryProcessor = new RecordProcessor({
+      const noRetryProcessor = new DDBRecordProcessor({
         recordRepository: mockRepository,
         logger: mockLogger,
         config: {

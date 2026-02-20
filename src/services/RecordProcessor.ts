@@ -1,25 +1,25 @@
 import type { RecordData } from "../models/Record.js";
 import { RecordRepository } from "../models/Record.js";
-import type { Logger, ProcessError, ProcessorMetrics, RecordRepository as IRecordRepository } from "../types/index.js";
+import type { ILogger, ProcessError, ProcessorMetrics, IRecordRepository } from "../types/index.js";
 import type { ProcessorConfig } from "../utils/processor-config.js";
 import { getDefaultConfig } from "../utils/processor-config.js";
-import { createLogger } from "./Logger.js";
+import { createLogger } from "./logger.js";
 
 export type ProcessFunction = (record: RecordData) => Promise<void>;
 
-export class RecordProcessor {
+export class DDBRecordProcessor {
   private recordRepository: IRecordRepository;
   private config: ProcessorConfig;
   private errors: ProcessError[];
   private totalProcessed: number;
   private totalAttempts: number;
   private maxIterations: number;
-  private logger: Logger;
+  private logger: ILogger;
 
   constructor(options?: {
     config?: Partial<ProcessorConfig>;
     recordRepository?: IRecordRepository;
-    logger?: Logger;
+    logger?: ILogger;
   }) {
     this.recordRepository = options?.recordRepository ?? new RecordRepository();
     this.config = { ...getDefaultConfig(), ...options?.config };
@@ -160,7 +160,11 @@ export class RecordProcessor {
   }
 
   private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, ms);
+    });
   }
 
   private extractErrorMessage(reason: unknown): string {

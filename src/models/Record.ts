@@ -7,7 +7,7 @@ import {
   UpdateCommand,
   createDocClient,
 } from "../services/dynamodb.js";
-import type { RecordData, RecordRepository as IRecordRepository } from "../types/index.js";
+import type { IRecordData, IRecordRepository } from "../types/index.js";
 
 export class DynamoDBRecordRepository implements IRecordRepository {
   private readonly tableName: string;
@@ -18,7 +18,7 @@ export class DynamoDBRecordRepository implements IRecordRepository {
     this.docClient = options?.docClient ?? createDocClient();
   }
 
-  async putItem(record: RecordData): Promise<void> {
+  async putItem(record: IRecordData): Promise<void> {
     const now = new Date().toISOString();
     const recordWithTimestamps = {
       ...record,
@@ -33,7 +33,7 @@ export class DynamoDBRecordRepository implements IRecordRepository {
     );
   }
 
-  async getItem(accountId: string, runTime: string): Promise<RecordData | undefined> {
+  async getItem(accountId: string, runTime: string): Promise<IRecordData | undefined> {
     const result = await this.docClient.send(
       new GetCommand({
         TableName: this.tableName,
@@ -45,10 +45,10 @@ export class DynamoDBRecordRepository implements IRecordRepository {
       return undefined;
     }
 
-    return result.Item as RecordData;
+    return result.Item as IRecordData;
   }
 
-  async queryByAccount(accountId: string): Promise<RecordData[]> {
+  async queryByAccount(accountId: string): Promise<IRecordData[]> {
     const result = await this.docClient.send(
       new QueryCommand({
         TableName: this.tableName,
@@ -62,7 +62,7 @@ export class DynamoDBRecordRepository implements IRecordRepository {
     return this.parseItems(result.Items);
   }
 
-  async queryUnprocessed(): Promise<RecordData[]> {
+  async queryUnprocessed(): Promise<IRecordData[]> {
     const result = await this.docClient.send(
       new QueryCommand({
         TableName: this.tableName,
@@ -80,7 +80,7 @@ export class DynamoDBRecordRepository implements IRecordRepository {
     return this.parseItems(result.Items);
   }
 
-  async queryProcessed(): Promise<RecordData[]> {
+  async queryProcessed(): Promise<IRecordData[]> {
     const result = await this.docClient.send(
       new QueryCommand({
         TableName: this.tableName,
@@ -126,14 +126,14 @@ export class DynamoDBRecordRepository implements IRecordRepository {
     );
   }
 
-  private parseItems(items: unknown): RecordData[] {
+  private parseItems(items: unknown): IRecordData[] {
     if (items === null || items === undefined || !Array.isArray(items)) {
       return [];
     }
 
-    return items as RecordData[];
+    return items as IRecordData[];
   }
 }
 
 export const RecordRepository = DynamoDBRecordRepository;
-export { type RecordData };
+export { type IRecordData as RecordData };
